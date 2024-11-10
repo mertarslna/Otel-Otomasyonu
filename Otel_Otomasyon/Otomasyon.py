@@ -10,7 +10,6 @@ conn_str = (
     "Trusted_Connection=yes;"
 )
 
-
 # Veritabanı bağlantısını kurma fonksiyonu
 def connect_to_db():
     try:
@@ -22,23 +21,22 @@ def connect_to_db():
         return None
 
 
-# Kullanıcı ekleme fonksiyonu
-def add_user(username, password):
+# Yönetici ekleme fonksiyonu
+def add_admin(username, password):
     conn = connect_to_db()
     if conn:
         try:
             cursor = conn.cursor()
             cursor.execute("""INSERT INTO Users (Username, Password) VALUES (?, ?)""", (username, password))
             conn.commit()
-            QtWidgets.QMessageBox.information(None, "Başarı", "Kullanıcı başarıyla eklendi.")
+            QtWidgets.QMessageBox.information(None, "Başarılı", "Yönetici başarıyla eklendi.")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(None, "Hata", f"Kullanıcı eklenirken hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(None, "Hata", f"Yönetici eklenirken hata oluştu: {e}")
         finally:
             conn.close()
 
-
 # Kullanıcı girişi doğrulama fonksiyonu
-def validate_user(username, password):
+def validate_admin(username, password):
     conn = connect_to_db()
     if conn:
         try:
@@ -80,10 +78,11 @@ class SplashScreen(QtWidgets.QWidget):
         # Zamanlayıcıyı ayarla (2 saniye sonra giriş ekranını açacak)
         QtCore.QTimer.singleShot(2000, self.show_login)
 
+    # Giriş ekranını tam ekran aç
     def show_login(self):
         self.close()
         self.login_window = LoginWindow()
-        self.login_window.showFullScreen()  # Giriş ekranını tam ekran aç
+        self.login_window.showFullScreen()
 
 # Kullanıcı Giriş Penceresi
 class LoginWindow(QtWidgets.QWidget):
@@ -117,9 +116,7 @@ class LoginWindow(QtWidgets.QWidget):
         self.password_entry.setFixedSize(250, 30)
         self.username_entry.setStyleSheet("padding: 5px; border-radius: 8px; border: 1px solid #B2BABB;")
         self.password_entry.setStyleSheet("padding: 5px; border-radius: 8px; border: 1px solid #B2BABB;")
-
-        # Placeholder text (soluk yazı)
-        self.username_entry.setPlaceholderText("Kullanıcı Adı")
+        self.username_entry.setPlaceholderText("Kullanıcı Adı") # Placeholder text (soluk yazı)
         self.password_entry.setPlaceholderText("Şifre")
 
         # Etiket ve giriş kutularını form düzenine ekle
@@ -136,13 +133,13 @@ class LoginWindow(QtWidgets.QWidget):
         # Giriş butonunu oluştur ve stil ekle
         login_button = QtWidgets.QPushButton("Giriş Yap")
         login_button.clicked.connect(self.login)
-        login_button.setFixedSize(122, 40)  # Boyutları 122x40 olarak ayarladık
+        login_button.setFixedSize(122, 40)
         button_layout.addWidget(login_button)
 
         # Çıkış butonunu oluştur ve stil ekle
         exit_button = QtWidgets.QPushButton("Çıkış")
         exit_button.clicked.connect(self.close)
-        exit_button.setFixedSize(122, 40)  # Boyutları 122x40 olarak ayarladık
+        exit_button.setFixedSize(122, 40)
         button_layout.addWidget(exit_button)
 
         # Buton düzenini ana düzene ekle
@@ -162,7 +159,7 @@ class LoginWindow(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Uyarı", "Kullanıcı adı giriniz.")
         elif not password:
             QtWidgets.QMessageBox.warning(self, "Uyarı", "Şifre giriniz.")
-        elif validate_user(username, password):
+        elif validate_admin(username, password):
             self.close()
             self.main_menu = MainMenu()
             self.main_menu.showFullScreen()
@@ -261,7 +258,7 @@ class ReservationWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Rezervasyon Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerini artırdım
+        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
 
         # Ana düzen
         layout = QtWidgets.QVBoxLayout()
@@ -341,7 +338,7 @@ class RoomWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Oda Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerini artırdım
+        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
 
         # Ana düzen
         layout = QtWidgets.QVBoxLayout()
@@ -415,7 +412,7 @@ class CustomerWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Müşteri Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerini artırdım
+        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
 
         # Ana düzen
         layout = QtWidgets.QVBoxLayout()
