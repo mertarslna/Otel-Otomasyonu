@@ -412,75 +412,165 @@ class CustomerWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Müşteri Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
+        self.setGeometry(200, 200, 600, 400)
 
         # Ana düzen
-        layout = QtWidgets.QVBoxLayout()
-        layout.setAlignment(QtCore.Qt.AlignCenter)  # Düzeni ortala
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setup_customer_table()
+        self.setup_buttons()
 
-        # Başlık etiketini oluştur
-        title_label = QtWidgets.QLabel("Müşteri Yönetimi")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #2E4053;")
-        title_label.setAlignment(QtCore.Qt.AlignCenter)  # Başlığı ortala
-        layout.addWidget(title_label)
+        # Düzenleri ana düzene ekle
+        main_layout.addWidget(self.customer_table)
+        main_layout.addLayout(self.button_layout)
+        self.setLayout(main_layout)
 
-        # Form düzeni (Müşteri Adı, E-posta ve Telefon bilgileri için)
-        form_layout = QtWidgets.QFormLayout()
-        form_layout.setLabelAlignment(QtCore.Qt.AlignRight)  # Etiketleri sağa hizala
-        form_layout.setFormAlignment(QtCore.Qt.AlignCenter)  # Formu ortala
+        # Müşterileri yükle
+        self.load_customers()
 
-        # Giriş kutuları (Müşteri Adı, E-posta, Telefon)
-        self.customer_name_entry = QtWidgets.QLineEdit()
-        self.customer_email_entry = QtWidgets.QLineEdit()
-        self.customer_phone_entry = QtWidgets.QLineEdit()
+    def setup_customer_table(self):
+        # Müşteri tablosu oluştur
+        self.customer_table = QtWidgets.QTableWidget()
+        self.customer_table.setColumnCount(6)
+        self.customer_table.setHorizontalHeaderLabels(
+            ["Müşteri ID", "Müşteri Adı", "Cinsiyet", "Yaş", "Telefon", "E-posta"])
+        self.customer_table.horizontalHeader().setStretchLastSection(True)
+        self.customer_table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
 
-        # Giriş kutuları için stil
-        self.customer_name_entry.setFixedSize(250, 30)
-        self.customer_email_entry.setFixedSize(250, 30)
-        self.customer_phone_entry.setFixedSize(250, 30)
+    def setup_buttons(self):
+        # Ekle, Düzenle, Sil butonları
+        self.button_layout = QtWidgets.QHBoxLayout()
 
-        # Placeholder text (soluk yazılar)
-        self.customer_name_entry.setPlaceholderText("Müşteri Adı")
-        self.customer_email_entry.setPlaceholderText("E-posta")
-        self.customer_phone_entry.setPlaceholderText("Telefon")
+        self.add_button = QtWidgets.QPushButton("Müşteri Ekle")
+        self.add_button.clicked.connect(self.add_customer)
 
-        # Etiketler ve giriş kutularını form düzenine ekle
-        form_layout.addRow("Müşteri Adı:", self.customer_name_entry)
-        form_layout.addRow("E-posta:", self.customer_email_entry)
-        form_layout.addRow("Telefon:", self.customer_phone_entry)
+        self.edit_button = QtWidgets.QPushButton("Müşteri Düzenle")
+        self.edit_button.clicked.connect(self.edit_customer)
 
-        # Giriş butonunu oluştur ve stil ekle
-        save_button = QtWidgets.QPushButton("Müşteri Ekle")
-        save_button.clicked.connect(self.save_customer)
-        save_button.setFixedSize(150, 40)  # Buton boyutunu ayarla
+        self.delete_button = QtWidgets.QPushButton("Müşteri Sil")
+        self.delete_button.clicked.connect(self.delete_customer)
 
-        # Butonu form düzenine ekle
-        form_layout.addWidget(save_button)
+        # Butonları yerleştir
+        self.button_layout.addWidget(self.add_button)
+        self.button_layout.addWidget(self.edit_button)
+        self.button_layout.addWidget(self.delete_button)
 
-        # Form düzenini ana düzene ekle
-        layout.addLayout(form_layout)
+    def add_customer(self):
+        # Müşteri eklemek için yeni pencere
+        self.show_customer_form()
 
-        # Ana düzeni pencereye ekle
-        self.setLayout(layout)
+    def edit_customer(self):
+        # Seçili müşteriyi düzenlemek için
+        selected_row = self.customer_table.currentRow()
+        if selected_row >= 0:
+            customer_id = self.customer_table.item(selected_row, 0).text()
+            name = self.customer_table.item(selected_row, 1).text()
+            gender = self.customer_table.item(selected_row, 2).text()
+            age = self.customer_table.item(selected_row, 3).text()
+            phone = self.customer_table.item(selected_row, 4).text()
+            email = self.customer_table.item(selected_row, 5).text()
 
-    def save_customer(self):
+            # Müşteri bilgilerini formda göster
+            self.show_customer_form(customer_id, name, gender, age, phone, email)
+        else:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Lütfen düzenlemek için bir müşteri seçin.")
+
+    def delete_customer(self):
+        # Seçili müşteriyi silmek için
+        selected_row = self.customer_table.currentRow()
+        if selected_row >= 0:
+            customer_id = self.customer_table.item(selected_row, 0).text()
+            reply = QtWidgets.QMessageBox.question(self, "Onay", "Bu müşteriyi silmek istediğinize emin misiniz?",
+                                                   QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            if reply == QtWidgets.QMessageBox.Yes:
+                conn = connect_to_db()
+                if conn:
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute("DELETE FROM Customers WHERE Customer_id = ?", (customer_id,))
+                        conn.commit()
+                        self.load_customers()  # Listeyi güncelle
+                        QtWidgets.QMessageBox.information(self, "Başarılı", "Müşteri başarıyla silindi.")
+                    except Exception as e:
+                        print(f"Müşteri silinirken hata oluştu: {e}")
+                        QtWidgets.QMessageBox.critical(self, "Hata", "Müşteri silinirken hata oluştu.")
+                    finally:
+                        conn.close()
+        else:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Lütfen silmek için bir müşteri seçin.")
+
+    def load_customers(self):
+        # Müşteri tablosunu doldurma
         conn = connect_to_db()
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("""INSERT INTO Customers (Name, Email, Phone) VALUES (?, ?, ?)""",
-                               (self.customer_name_entry.text(),
-                                self.customer_email_entry.text(),
-                                self.customer_phone_entry.text()))
-                conn.commit()
-                QtWidgets.QMessageBox.information(self, "Başarılı", "Müşteri başarıyla eklendi.")
+                cursor.execute("SELECT Customer_id, Name, Gender, Age, Phone, Email FROM Customers")
+                rows = cursor.fetchall()
+
+                self.customer_table.setRowCount(0)  # Eski veriyi temizle
+                for row_data in rows:
+                    row = self.customer_table.rowCount()
+                    self.customer_table.insertRow(row)
+                    for column, data in enumerate(row_data):
+                        self.customer_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(data)))
             except Exception as e:
-                print(f"Müşteri eklenirken hata oluştu: {e}")
-                QtWidgets.QMessageBox.critical(self, "Hata", "Müşteri eklenirken hata oluştu.")
+                print(f"Müşteri listesi yüklenirken hata oluştu: {e}")
             finally:
                 conn.close()
 
+    def show_customer_form(self, customer_id=None, name="", gender="", age="", phone="", email=""):
+        # Müşteri ekleme/düzenleme formu
+        form_dialog = QtWidgets.QDialog(self)
+        form_dialog.setWindowTitle("Müşteri Formu")
+        form_dialog.setFixedSize(300, 400)
 
+        layout = QtWidgets.QFormLayout(form_dialog)
+        id_entry = QtWidgets.QLineEdit(customer_id)
+        name_entry = QtWidgets.QLineEdit(name)
+        gender_entry = QtWidgets.QLineEdit(gender)
+        age_entry = QtWidgets.QLineEdit(age)
+        phone_entry = QtWidgets.QLineEdit(phone)
+        email_entry = QtWidgets.QLineEdit(email)
+
+        layout.addRow("Müşteri ID:", id_entry)
+        layout.addRow("Müşteri Adı:", name_entry)
+        layout.addRow("Cinsiyet:", gender_entry)
+        layout.addRow("Yaş:", age_entry)
+        layout.addRow("Telefon:", phone_entry)
+        layout.addRow("E-posta:", email_entry)
+
+        # Kaydetme butonu
+        save_button = QtWidgets.QPushButton("Kaydet", form_dialog)
+        save_button.clicked.connect(lambda: self.save_customer(
+            id_entry.text(), name_entry.text(), gender_entry.text(),
+            age_entry.text(), phone_entry.text(), form_dialog, email_entry.text()
+        ))
+
+        layout.addWidget(save_button)
+        form_dialog.exec_()
+
+    def save_customer(self, customer_id, name, gender, age, phone, dialog, email):
+        conn = connect_to_db()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                if customer_id:  # Güncelleme işlemi
+                    cursor.execute("""UPDATE Customers SET Name=?, Gender=?, Age=?, Phone=?, Email=?
+                                      WHERE Customer_id=?""",
+                                   (name, gender, age, phone, email, customer_id))
+                else:  # Yeni müşteri ekleme
+                    cursor.execute("""INSERT INTO Customers (Name, Gender, Age, Phone, Email)
+                                      VALUES (?, ?, ?, ?, ?)""",
+                                   (name, gender, age, phone, email))
+                conn.commit()
+                self.load_customers()
+                dialog.accept()
+                QtWidgets.QMessageBox.information(self, "Başarılı", "Müşteri bilgileri başarıyla kaydedildi.")
+            except Exception as e:
+                print(f"Müşteri bilgisi kaydedilirken hata oluştu: {e}")
+                QtWidgets.QMessageBox.critical(self, "Hata", "Müşteri bilgisi kaydedilirken hata oluştu.")
+            finally:
+                conn.close()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
