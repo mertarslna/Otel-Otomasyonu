@@ -10,6 +10,8 @@ conn_str = (
     "Trusted_Connection=yes;"
 )
 
+
+
 # Veritabanı bağlantısını kurma fonksiyonu
 def connect_to_db():
     try:
@@ -22,12 +24,15 @@ def connect_to_db():
 
 
 # Yönetici ekleme fonksiyonu
-def add_admin(username, password):
+def add_admin(admin_name, username, password):
     conn = connect_to_db()
     if conn:
         try:
             cursor = conn.cursor()
-            cursor.execute("""INSERT INTO Users (Username, Password) VALUES (?, ?)""", (username, password))
+            cursor.execute("""
+                INSERT INTO Admin (Admin_name, Username, Password) 
+                VALUES (?, ?, ?)
+            """, (admin_name, username, password))
             conn.commit()
             QtWidgets.QMessageBox.information(None, "Başarılı", "Yönetici başarıyla eklendi.")
         except Exception as e:
@@ -41,14 +46,13 @@ def validate_admin(username, password):
     if conn:
         try:
             cursor = conn.cursor()
-            cursor.execute("""SELECT * FROM Users WHERE Username = ? AND Password = ?""", (username, password))
+            cursor.execute("""SELECT * FROM Admin WHERE Username = ? AND Password = ?""", (username, password))
             return cursor.fetchone() is not None
         except Exception as e:
             print(f"Giriş doğrulama sırasında hata oluştu: {e}")
         finally:
             conn.close()
     return False
-
 
 # S plash ekranı
 class SplashScreen(QtWidgets.QWidget):
@@ -159,9 +163,9 @@ class LoginWindow(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Uyarı", "Kullanıcı adı giriniz.")
         elif not password:
             QtWidgets.QMessageBox.warning(self, "Uyarı", "Şifre giriniz.")
-        elif validate_admin(username, password):
+        elif validate_admin(username, password):  # validate_admin fonksiyonunun tanımlı olduğunu varsayıyoruz
             self.close()
-            self.main_menu = MainMenu()
+            self.main_menu = MainMenu()  # MainMenu sınıfının tanımlı olduğundan emin olun
             self.main_menu.showFullScreen()
         else:
             QtWidgets.QMessageBox.critical(self, "Hata", "Kullanıcı adı veya şifre yanlış!")
@@ -252,7 +256,6 @@ class MainMenu(QtWidgets.QWidget):
         self.login_window = LoginWindow()  # Giriş penceresini yeniden oluştur
         self.login_window.showFullScreen()  # Giriş penceresini tam ekran olarak göster
 
-
 # Rezervasyon Yönetim Penceresi
 class ReservationWindow(QtWidgets.QWidget):
     def __init__(self):
@@ -319,7 +322,8 @@ class ReservationWindow(QtWidgets.QWidget):
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    """INSERT INTO Reservations (CustomerID, RoomID, StartDate, EndDate) VALUES (?, ?, ?, ?)""",
+                    """INSERT INTO Reservation (Customer_id, Room_Number, Start_Date, End_Date) 
+                    VALUES (?, ?, ?, ?)""",
                     (self.customer_id_entry.text(),
                      self.room_id_entry.text(),
                      self.start_date_entry.text(),
@@ -331,7 +335,6 @@ class ReservationWindow(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.critical(self, "Hata", "Rezervasyon eklenirken hata oluştu.")
             finally:
                 conn.close()
-
 
 # Oda Yönetim Penceresi
 class RoomWindow(QtWidgets.QWidget):
@@ -407,15 +410,30 @@ class RoomWindow(QtWidgets.QWidget):
         if conn:
             try:
                 cursor = conn.cursor()
+
+                # Oda bilgileri alındı
+                room_number = self.room_number_entry.text()
+                room_type = self.room_type_entry.text()
+                price = self.price_entry.text()
+
+                # Hotel_id'yi manuel olarak almanız veya UI üzerinden eklemeniz gerekebilir
+                hotel_id = 1  # Örneğin, bunu sabit olarak 1 belirledim, burayı düzenlemeniz gerekebilir
+
+                # Oda numarasının benzersiz olmasını sağla
+                cursor.execute("SELECT COUNT(*) FROM Room WHERE Room_id = ?", (room_number,))
+                if cursor.fetchone()[0] > 0:
+                    QtWidgets.QMessageBox.warning(self, "Hata", "Bu oda numarası zaten var.")
+                    return
+
+                # Odayı ekle
                 cursor.execute("""
-                    INSERT INTO Rooms (RoomNumber, RoomType, Price, IsOccupied) 
-                    VALUES (?, ?, ?, ?)
-                """, (self.room_number_entry.text(),
-                      self.room_type_entry.text(),
-                      self.price_entry.text(),
-                      0))  # Yeni eklenen odalar varsayılan olarak boş
+                    INSERT INTO Room (Room_id, Hotel_id, Room_Type, Price, Available)
+                    VALUES (?, ?, ?, ?, ?)  
+                """, (room_number, hotel_id, room_type, price, 1))  # Varsayılan olarak Available = 1 (boş)
+
                 conn.commit()
                 QtWidgets.QMessageBox.information(self, "Başarılı", "Oda başarıyla eklendi.")
+
             except Exception as e:
                 print(f"Oda eklenirken hata oluştu: {e}")
                 QtWidgets.QMessageBox.critical(self, "Hata", "Oda eklenirken hata oluştu.")
@@ -432,7 +450,7 @@ class RoomWindow(QtWidgets.QWidget):
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    UPDATE Rooms SET IsOccupied = ? WHERE RoomNumber = ?
+                    UPDATE Room SET Available = ? WHERE Room_id = ?
                 """, (is_occupied, room_number))
                 conn.commit()
                 QtWidgets.QMessageBox.information(self, "Başarılı", "Oda durumu güncellendi.")
@@ -449,7 +467,7 @@ class RoomWindow(QtWidgets.QWidget):
                 raise Exception("Veritabanı bağlantısı sağlanamadı.")
 
             cursor = conn.cursor()
-            cursor.execute("SELECT RoomNumber, RoomType, Price, IsOccupied FROM Rooms")
+            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Room")
             rooms = cursor.fetchall()
 
             if not rooms:
@@ -470,7 +488,7 @@ class RoomWindow(QtWidgets.QWidget):
             room_status_list = QtWidgets.QListWidget()
             for room in rooms:
                 room_number, room_type, price, is_occupied = room
-                status_icon = "❌" if is_occupied else "✔"
+                status_icon = "❌" if not is_occupied else "✔"
                 room_item = f"Oda No: {room_number} - Tip: {room_type} - Fiyat: {price} TL - Durum: {status_icon}"
                 room_status_list.addItem(room_item)
 
@@ -485,7 +503,7 @@ class RoomWindow(QtWidgets.QWidget):
                     room_number = selected_room.split(" - ")[0].split(": ")[1]  # Oda numarasını al
 
                     # Odanın mevcut durumunu al
-                    cursor.execute("SELECT IsOccupied FROM Rooms WHERE RoomNumber = ?", (room_number,))
+                    cursor.execute("SELECT Available FROM Room WHERE Room_id = ?", (room_number,))
                     is_occupied = cursor.fetchone()[0]
 
                     # Durumu tersine çevir
@@ -516,7 +534,6 @@ class RoomWindow(QtWidgets.QWidget):
         finally:
             if conn:
                 conn.close()
-
 
 # Müşteri Yönetim Penceresi
 class CustomerWindow(QtWidgets.QWidget):
@@ -638,14 +655,20 @@ class CustomerWindow(QtWidgets.QWidget):
         layout = QtWidgets.QFormLayout(form_dialog)
         id_entry = QtWidgets.QLineEdit(customer_id)
         name_entry = QtWidgets.QLineEdit(name)
-        gender_entry = QtWidgets.QLineEdit(gender)
+
+        # Cinsiyet için QComboBox (Açılır Menüyü) oluştur
+        gender_entry = QtWidgets.QComboBox()
+        gender_entry.addItem("Erkek")
+        gender_entry.addItem("Kadın")
+        gender_entry.setCurrentText(gender if gender else "Erkek")  # Varsayılan olarak "Erkek" seçili
+
         age_entry = QtWidgets.QLineEdit(age)
         phone_entry = QtWidgets.QLineEdit(phone)
         email_entry = QtWidgets.QLineEdit(email)
 
         layout.addRow("Müşteri ID:", id_entry)
         layout.addRow("Müşteri Adı:", name_entry)
-        layout.addRow("Cinsiyet:", gender_entry)
+        layout.addRow("Cinsiyet:", gender_entry)  # Yeni cinsiyet seçimi
         layout.addRow("Yaş:", age_entry)
         layout.addRow("Telefon:", phone_entry)
         layout.addRow("E-posta:", email_entry)
@@ -653,7 +676,7 @@ class CustomerWindow(QtWidgets.QWidget):
         # Kaydetme butonu
         save_button = QtWidgets.QPushButton("Kaydet", form_dialog)
         save_button.clicked.connect(lambda: self.save_customer(
-            id_entry.text(), name_entry.text(), gender_entry.text(),
+            id_entry.text(), name_entry.text(), gender_entry.currentText(),  # Cinsiyet seçeneği burada alınacak
             age_entry.text(), phone_entry.text(), form_dialog, email_entry.text()
         ))
 
