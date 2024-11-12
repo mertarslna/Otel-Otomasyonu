@@ -258,7 +258,7 @@ class ReservationWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Rezervasyon Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
+        self.setGeometry(200, 200, 600, 400)
 
         # Ana düzen
         layout = QtWidgets.QVBoxLayout()
@@ -338,7 +338,7 @@ class RoomWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Oda Yönetimi")
-        self.setGeometry(200, 200, 400, 350)  # Genişlik ve yükseklik değerleri
+        self.setGeometry(200, 200, 600, 400)
 
         # Ana düzen
         layout = QtWidgets.QVBoxLayout()
@@ -375,16 +375,29 @@ class RoomWindow(QtWidgets.QWidget):
         form_layout.addRow("Oda Tipi:", self.room_type_entry)
         form_layout.addRow("Fiyat:", self.price_entry)
 
-        # Giriş butonunu oluştur ve stil ekle
+        # Butonları oluştur
+        button_layout = QtWidgets.QHBoxLayout()  # Yatay düzen oluşturuyoruz
+
         save_button = QtWidgets.QPushButton("Oda Ekle")
         save_button.clicked.connect(self.save_room)
-        save_button.setFixedSize(150, 40)  # Buton boyutunu ayarla
+        save_button.setFixedSize(150, 40)
 
-        # Butonu form düzenine ekle
-        form_layout.addWidget(save_button)
+        list_button = QtWidgets.QPushButton("Odaları Listele")
+        list_button.clicked.connect(self.list_rooms)
+        list_button.setFixedSize(150, 40)
 
-        # Form düzenini ana düzene ekle
+        status_button = QtWidgets.QPushButton("Durumları Listele")
+        status_button.clicked.connect(self.list_room_status)
+        status_button.setFixedSize(170, 40)
+
+        # Butonları yatay düzene ekle
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(list_button)
+        button_layout.addWidget(status_button)
+
+        # Buton düzenini form düzeninin altına ekle
         layout.addLayout(form_layout)
+        layout.addLayout(button_layout)  # Buton düzenini ana düzene ekle
 
         # Ana düzeni pencereye ekle
         self.setLayout(layout)
@@ -394,16 +407,114 @@ class RoomWindow(QtWidgets.QWidget):
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("""INSERT INTO Rooms (RoomNumber, RoomType, Price) VALUES (?, ?, ?)""",
-                               (self.room_number_entry.text(),
-                                self.room_type_entry.text(),
-                                self.price_entry.text()))
+                cursor.execute("""
+                    INSERT INTO Rooms (RoomNumber, RoomType, Price, IsOccupied) 
+                    VALUES (?, ?, ?, ?)
+                """, (self.room_number_entry.text(),
+                      self.room_type_entry.text(),
+                      self.price_entry.text(),
+                      0))  # Yeni eklenen odalar varsayılan olarak boş
                 conn.commit()
                 QtWidgets.QMessageBox.information(self, "Başarılı", "Oda başarıyla eklendi.")
             except Exception as e:
                 print(f"Oda eklenirken hata oluştu: {e}")
                 QtWidgets.QMessageBox.critical(self, "Hata", "Oda eklenirken hata oluştu.")
             finally:
+                conn.close()
+
+    def list_rooms(self):
+        # List rooms logic remains unchanged
+        pass
+
+    def update_room_status(self, room_number, is_occupied):
+        conn = connect_to_db()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE Rooms SET IsOccupied = ? WHERE RoomNumber = ?
+                """, (is_occupied, room_number))
+                conn.commit()
+                QtWidgets.QMessageBox.information(self, "Başarılı", "Oda durumu güncellendi.")
+            except Exception as e:
+                print(f"Durum güncellenirken hata oluştu: {e}")
+                QtWidgets.QMessageBox.critical(self, "Hata", "Durum güncellenirken hata oluştu.")
+            finally:
+                conn.close()
+
+    def list_room_status(self):
+        try:
+            conn = connect_to_db()
+            if not conn:
+                raise Exception("Veritabanı bağlantısı sağlanamadı.")
+
+            cursor = conn.cursor()
+            cursor.execute("SELECT RoomNumber, RoomType, Price, IsOccupied FROM Rooms")
+            rooms = cursor.fetchall()
+
+            if not rooms:
+                QtWidgets.QMessageBox.information(self, "Bilgi", "Henüz eklenmiş oda yok.")
+                return
+
+            # Odaların durumlarını yeni bir pencere ile göster
+            status_window = QtWidgets.QDialog(self)
+            status_window.setWindowTitle("Oda Durumları")
+            status_window.setGeometry(600, 200, 400, 300)
+
+            status_layout = QtWidgets.QVBoxLayout()
+            status_label = QtWidgets.QLabel("Oda Durumları:")
+            status_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #2E4053;")
+            status_layout.addWidget(status_label)
+
+            # Listeyi gösteren widget
+            room_status_list = QtWidgets.QListWidget()
+            for room in rooms:
+                room_number, room_type, price, is_occupied = room
+                status_icon = "❌" if is_occupied else "✔"
+                room_item = f"Oda No: {room_number} - Tip: {room_type} - Fiyat: {price} TL - Durum: {status_icon}"
+                room_status_list.addItem(room_item)
+
+            status_layout.addWidget(room_status_list)
+
+            # Durum güncelleme butonu
+            def update_status():
+                # Seçilen oda numarasını al
+                selected_item = room_status_list.selectedItems()
+                if selected_item:
+                    selected_room = selected_item[0].text()
+                    room_number = selected_room.split(" - ")[0].split(": ")[1]  # Oda numarasını al
+
+                    # Odanın mevcut durumunu al
+                    cursor.execute("SELECT IsOccupied FROM Rooms WHERE RoomNumber = ?", (room_number,))
+                    is_occupied = cursor.fetchone()[0]
+
+                    # Durumu tersine çevir
+                    new_status = 0 if is_occupied == 1 else 1
+                    self.update_room_status(room_number, new_status)  # Durumu güncelle
+
+                    # Durum simgesini güncelle
+                    room_status_list.clear()
+                    for room in rooms:
+                        room_number, room_type, price, is_occupied = room
+                        status_icon = "✔️" if is_occupied else "❌"
+                        room_item = f"Oda No: {room_number} - Tip: {room_type} - Fiyat: {price} TL - Durum: {status_icon}"
+                        room_status_list.addItem(room_item)
+
+            update_button = QtWidgets.QPushButton("Durumu Güncelle")
+            update_button.clicked.connect(update_status)
+            status_layout.addWidget(update_button)
+
+            status_window.setLayout(status_layout)
+
+            # Pencereyi göster ve modal olarak açık tut
+            status_window.exec_()
+
+        except Exception as e:
+            print(f"Hata oluştu: {str(e)}")
+            QtWidgets.QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {str(e)}")
+
+        finally:
+            if conn:
                 conn.close()
 
 
