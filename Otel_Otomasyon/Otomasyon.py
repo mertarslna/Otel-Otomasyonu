@@ -193,9 +193,6 @@ class MainMenu(QtWidgets.QWidget):
         exit_button.setFixedSize(150, 40)  # Buton boyutunu ayarla
         button_layout.addWidget(exit_button, alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter)
 
-        # Görselleri ekle
-        self.add_images(main_layout)
-
         # Butonlar ve görselleri düzeni ana düzenle birleştir
         main_layout.addLayout(button_layout)
 
@@ -213,31 +210,6 @@ class MainMenu(QtWidgets.QWidget):
         customer_management_button = QtWidgets.QPushButton("Müşteri Yönetimi")
         customer_management_button.clicked.connect(self.open_customer_management)
         button_layout.addWidget(customer_management_button)
-
-    def add_images(self, layout):
-        # Resimleri ekle
-        image1 = QtGui.QPixmap("image1.jpg").scaled(1500, 300, QtCore.Qt.KeepAspectRatio)
-        image2 = QtGui.QPixmap("image2.jpg").scaled(1500, 300, QtCore.Qt.KeepAspectRatio)
-        image3 = QtGui.QPixmap("image3.jpg").scaled(1500, 300, QtCore.Qt.KeepAspectRatio)
-
-        # Üst satır için layout
-        top_layout = QtWidgets.QHBoxLayout()
-        label1 = QtWidgets.QLabel()
-        label1.setPixmap(image1)
-        label2 = QtWidgets.QLabel()
-        label2.setPixmap(image2)
-        top_layout.addWidget(label1)
-        top_layout.addWidget(label2)
-
-        # Alt satır için layout
-        bottom_layout = QtWidgets.QVBoxLayout()
-        bottom_layout.addLayout(top_layout)
-
-        label3 = QtWidgets.QLabel()
-        label3.setPixmap(image3)
-        bottom_layout.addWidget(label3)
-
-        layout.addLayout(bottom_layout)
 
     def open_reservation_management(self):
         self.reservation_window = ReservationWindow()
@@ -666,7 +638,6 @@ class CustomerWindow(QtWidgets.QWidget):
         phone_entry = QtWidgets.QLineEdit(phone)
         email_entry = QtWidgets.QLineEdit(email)
 
-        layout.addRow("Müşteri ID:", id_entry)
         layout.addRow("Müşteri Adı:", name_entry)
         layout.addRow("Cinsiyet:", gender_entry)  # Yeni cinsiyet seçimi
         layout.addRow("Yaş:", age_entry)
@@ -676,7 +647,7 @@ class CustomerWindow(QtWidgets.QWidget):
         # Kaydetme butonu
         save_button = QtWidgets.QPushButton("Kaydet", form_dialog)
         save_button.clicked.connect(lambda: self.save_customer(
-            id_entry.text(), name_entry.text(), gender_entry.currentText(),  # Cinsiyet seçeneği burada alınacak
+            name_entry.text(), gender_entry.currentText(),
             age_entry.text(), phone_entry.text(), form_dialog, email_entry.text()
         ))
 
