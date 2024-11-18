@@ -1,5 +1,5 @@
 CREATE TABLE Customer (
-    Customer_id INT PRIMARY KEY,
+    Customer_id INT IDENTITY(1,1) PRIMARY KEY,
     Age INT,
     Gender VARCHAR(10),
     Name VARCHAR(100),
@@ -8,7 +8,7 @@ CREATE TABLE Customer (
 );
 
 CREATE TABLE Hotel (
-    Hotel_id INT PRIMARY KEY,
+    Hotel_id INT IDENTITY(1,1) PRIMARY KEY,
     Hotel_Name VARCHAR(100),
     Location VARCHAR(200),
     Score DECIMAL(3, 2)
@@ -24,7 +24,7 @@ CREATE TABLE Room (
 );
 
 CREATE TABLE Bill (
-    Bill_id INT PRIMARY KEY,
+    Bill_id INT IDENTITY(1,1) PRIMARY KEY,
     Customer_id INT,
     Date DATE,
     Amount DECIMAL(10, 2),
@@ -32,7 +32,7 @@ CREATE TABLE Bill (
 );
 
 CREATE TABLE Reservation (
-    Reservation_id INT PRIMARY KEY,
+    Reservation_id INT IDENTITY(1,1) PRIMARY KEY,
     Customer_id INT,
     Room_Number INT,
     Start_Date DATE,
@@ -42,7 +42,7 @@ CREATE TABLE Reservation (
 );
 
 CREATE TABLE Admin (
-    Admin_id INT PRIMARY KEY,
+    Admin_id INT IDENTITY(1,1) PRIMARY KEY,
     Admin_name VARCHAR(100),
     Username VARCHAR(50),
     Password VARCHAR(100)
