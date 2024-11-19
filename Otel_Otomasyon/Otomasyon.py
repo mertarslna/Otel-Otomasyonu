@@ -40,7 +40,7 @@ def add_admin(admin_name, username, password):
         finally:
             conn.close()
 
-# Kullanıcı girişi doğrulama fonksiyonu
+# Yönetici girişi doğrulama fonksiyonu
 def validate_admin(username, password):
     conn = connect_to_db()
     if conn:
@@ -88,7 +88,7 @@ class SplashScreen(QtWidgets.QWidget):
         self.login_window = LoginWindow()
         self.login_window.showFullScreen()
 
-# Kullanıcı Giriş Penceresi
+# Yönetici Giriş Penceresi
 class LoginWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -100,7 +100,7 @@ class LoginWindow(QtWidgets.QWidget):
         main_layout.setAlignment(QtCore.Qt.AlignCenter)  # Ana düzeni ortala
 
         # Başlık etiketini oluştur
-        title_label = QtWidgets.QLabel("Kullanıcı Girişi")
+        title_label = QtWidgets.QLabel("Yönetici Girişi")
         title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #2E4053;")
         title_label.setAlignment(QtCore.Qt.AlignCenter)  # Başlığı ortala
         main_layout.addWidget(title_label)
@@ -245,12 +245,12 @@ class ReservationWindow(QtWidgets.QWidget):
         title_label.setAlignment(QtCore.Qt.AlignCenter)  # Başlığı ortala
         layout.addWidget(title_label)
 
-        # Form düzeni (Kullanıcı ID, Oda ID, Tarih bilgileri için)
+        # Form düzeni (Oda ID, Tarih bilgileri için)
         form_layout = QtWidgets.QFormLayout()
         form_layout.setLabelAlignment(QtCore.Qt.AlignRight)  # Etiketleri sağa hizala
         form_layout.setFormAlignment(QtCore.Qt.AlignCenter)  # Formu ortala
 
-        # Giriş kutuları (Kullanıcı ID, Oda ID, Başlangıç ve Bitiş Tarihleri)
+        # Giriş kutuları (Oda ID, Başlangıç ve Bitiş Tarihleri)
         self.room_id_entry = QtWidgets.QLineEdit()
         self.start_date_entry = QtWidgets.QLineEdit()
         self.end_date_entry = QtWidgets.QLineEdit()
@@ -507,7 +507,7 @@ class CustomerWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Müşteri Yönetimi")
-        self.setGeometry(200, 200, 600, 400)
+        self.setGeometry(200, 200, 900, 400)
 
         # Ana düzen
         main_layout = QtWidgets.QVBoxLayout()
@@ -527,7 +527,7 @@ class CustomerWindow(QtWidgets.QWidget):
         self.customer_table = QtWidgets.QTableWidget()
         self.customer_table.setColumnCount(6)
         self.customer_table.setHorizontalHeaderLabels(
-            ["Müşteri ID", "Müşteri Adı", "Cinsiyet", "Yaş", "Telefon", "E-posta"])
+            ["ID", "Müşteri Adı", "Cinsiyet", "Yaş", "Telefon", "E-posta"])
         self.customer_table.horizontalHeader().setStretchLastSection(True)
         self.customer_table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
 
