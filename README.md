@@ -34,29 +34,22 @@ Bu veri tabanı modeli; otel, odalar, müşteriler, rezervasyonlar, hizmetler, p
 - **Price**: Oda ücreti.
 - **Available**: Oda müsaitliği.
 
-#### 3. Hotel
-- **Hotel_id** (Primary Key): Otelin kimlik numarası.
-- **Hotel_Name**: Otelin ismi.
-- **Location**: Otelin adresi.
-- **Score**: Otel puanlaması.
-  
-#### 4. Bill 
+#### 3. Bill 
 - **Bill_id** (Primary Key): Fatura kimlik numarası.
 - **Customer_id** (Foreign Key): Faturayı ödeyen kişinin müşteri kimliği.
 - **Date**: Faturanın oluşturulma tarihi.
 - **Amount**: Faturanin bedel miktarı.
   
-#### 5. Reservation
+#### 4. Reservation
 - **Reservation_id** (Primary Key): Reservasyon numarası.
 - **Customer_id** (Foreign Key): Rezervasyonu yapan müşteri kimliği.
 - **Room_Number** (Foreign Key): Rezervasyon yapılan oda numarası.
 - **Start_Date**: Rezervasyon başlangıç tarihi.
 - **End_Date**: Rezervasyon bitiş tarihi.
 
-#### 6. Review
+#### 5. Review
 - **Review_id** (Primary Key): Değerlendirme kimlik numarası.
 - **Customer_id** (Foreign Key): Yorumu yapan müşteri kimlik numarası.
-- **Hotel_id** (Foreign Key): Yorum yapılan otel.
 - **Rating**: Otel puanı (örneğin, 1-5 arası).
 - **Comments**: Müşterinin yorumları.
 - **Comment_Date**: Yorum tarihi.
@@ -65,8 +58,6 @@ Bu veri tabanı modeli; otel, odalar, müşteriler, rezervasyonlar, hizmetler, p
 1. **Customer - Reservation** : Her rezervasyon tek bir müşteriye aittir (**N-1**).
 2. **Customer - Bill**: Her fatura tek bir müşteriye aittir (**N:1**).
 3. **Customer - Review**: Her değerlendirme tek bir müşteriye aittir (**N-1**).
-4. **Room - Hotel**: Bir otelde birden fazla oda olabilir (**1:N**).
-5. **Room - Reservation** : Her rezervasyon belirli bir odaya aittir. (**N-1**)
-6. **Hotel - Review** : Bir otel, birden fazla müşteri tarafından değerlendirilebilir (**1-N**).
+4. **Room - Reservation** : Her rezervasyon belirli bir odaya aittir. (**N-1**)
 
 ![image](https://github.com/user-attachments/assets/08371886-2167-4461-9d84-badd7104a589)
