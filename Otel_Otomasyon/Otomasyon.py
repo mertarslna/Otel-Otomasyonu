@@ -22,7 +22,6 @@ def connect_to_db():
         print("MSSQL bağlantısı başarısız:", e)
         return None
 
-
 # Yönetici ekleme fonksiyonu
 def add_admin(admin_name, username, password):
     conn = connect_to_db()
@@ -620,7 +619,7 @@ class CustomerWindow(QtWidgets.QWidget):
         # Müşteri ekleme/düzenleme formu
         form_dialog = QtWidgets.QDialog(self)
         form_dialog.setWindowTitle("Müşteri Formu")
-        form_dialog.setFixedSize(300, 400)
+        form_dialog.setFixedSize(300, 200)
 
         layout = QtWidgets.QFormLayout(form_dialog)
         name_entry = QtWidgets.QLineEdit(name)
