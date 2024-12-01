@@ -10,18 +10,6 @@ conn_str = (
     "Trusted_Connection=yes;"
 )
 
-
-
-# Veritabanı bağlantısını kurma fonksiyonu
-def connect_to_db():
-    try:
-        connection = pyodbc.connect(conn_str)
-        print("MSSQL bağlantısı başarılı.")
-        return connection
-    except Exception as e:
-        print("MSSQL bağlantısı başarısız:", e)
-        return None
-
 # Yönetici ekleme fonksiyonu
 def add_admin(admin_name, username, password):
     conn = connect_to_db()
@@ -38,6 +26,16 @@ def add_admin(admin_name, username, password):
             QtWidgets.QMessageBox.critical(None, "Hata", f"Yönetici eklenirken hata oluştu: {e}")
         finally:
             conn.close()
+
+# Veritabanı bağlantısını kurma fonksiyonu
+def connect_to_db():
+    try:
+        connection = pyodbc.connect(conn_str)
+        print("MSSQL bağlantısı başarılı.")
+        return connection
+    except Exception as e:
+        print("MSSQL bağlantısı başarısız:", e)
+        return None
 
 # Yönetici girişi doğrulama fonksiyonu
 def validate_admin(username, password):
@@ -355,14 +353,9 @@ class RoomWindow(QtWidgets.QWidget):
         list_button.clicked.connect(self.list_rooms)
         list_button.setFixedSize(150, 40)
 
-        status_button = QtWidgets.QPushButton("Durumları Listele")
-        status_button.clicked.connect(self.list_room_status)
-        status_button.setFixedSize(170, 40)
-
         # Butonları yatay düzene ekle
         button_layout.addWidget(save_button)
         button_layout.addWidget(list_button)
-        button_layout.addWidget(status_button)
 
         # Buton düzenini form düzeninin altına ekle
         layout.addLayout(form_layout)
@@ -392,7 +385,7 @@ class RoomWindow(QtWidgets.QWidget):
                     return
 
                 # Odayı ekle
-                cursor.execute("""
+                cursor.execute(""" 
                     INSERT INTO Room (Room_id, Hotel_id, Room_Type, Price, Available)
                     VALUES (?, ?, ?, ?, ?)
                 """, (room_number, hotel_id, room_type, price, 1))
@@ -420,79 +413,141 @@ class RoomWindow(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.information(self, "Bilgi", "Henüz eklenmiş oda yok.")
                 return
 
-            # Odaları listeleyen yeni bir pencere oluştur
             room_list_window = QtWidgets.QDialog(self)
-            room_list_window.setWindowTitle("Odaları Listele")
-            room_list_window.setGeometry(600, 200, 500, 400)
+            room_list_window.setWindowTitle("Odalar")
+            room_list_window.setGeometry(600, 200, 400, 300)
 
-            # Ana düzen
             layout = QtWidgets.QVBoxLayout()
 
-            # Başlık
-            title_label = QtWidgets.QLabel("Odalar:")
-            title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #2E4053;")
-            layout.addWidget(title_label)
-
-            # Liste widget'ı
-            room_list_widget = QtWidgets.QListWidget()
+            list_widget = QtWidgets.QListWidget()
             for room in rooms:
-                room_number, room_type, price, is_occupied = room
-                status_icon = "✔️" if is_occupied else "❌"
-                room_item = f"Oda No: {room_number} - Tip: {room_type} - Fiyat: {price} TL - Durum: {status_icon}"
-                room_list_widget.addItem(room_item)
+                room_id, room_type, price, available = room
+                available_status = "Boş" if available else "Dolu"
+                item_text = f"Oda No: {room_id}, Tip: {room_type}, Fiyat: {price} TL, Durum: {available_status}"
+                item = QtWidgets.QListWidgetItem(item_text)
+                list_widget.addItem(item)
 
-            layout.addWidget(room_list_widget)
+                # Odaların düzenlenmesini engelle
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
-            # Liste öğesine çift tıklama olayı
-            def update_status_on_click(item):
-                selected_room = item.text()
-                room_number = selected_room.split(" - ")[0].split(": ")[1]  # Oda numarasını al
+                # Odaların durumunu değiştirmek için çift tıklama olayı
+                item.setData(QtCore.Qt.UserRole, room_id)  # Oda numarasını saklıyoruz
 
-                # Mevcut durum
-                cursor.execute("SELECT Available FROM Room WHERE Room_id = ?", (room_number,))
-                is_occupied = cursor.fetchone()[0]
+            # Çift tıklama ile oda detaylarını düzenleyeceğiz
+            list_widget.itemDoubleClicked.connect(self.open_room_edit_window)
 
-                # Durumu tersine çevir
-                new_status = 0 if is_occupied == 1 else 1
-
-                try:
-                    cursor.execute("""
-                        UPDATE Room SET Available = ? WHERE Room_id = ?
-                    """, (new_status, room_number))
-                    conn.commit()
-                    QtWidgets.QMessageBox.information(
-                        self, "Başarılı", f"Oda No: {room_number} durum güncellendi."
-                    )
-                    # Listeyi yeniden yükle
-                    room_list_widget.clear()
-                    cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Room")
-                    updated_rooms = cursor.fetchall()
-                    for updated_room in updated_rooms:
-                        room_number, room_type, price, is_occupied = updated_room
-                        status_icon = "✔️" if is_occupied else "❌"
-                        room_item = f"Oda No: {room_number} - Tip: {room_type} - Fiyat: {price} TL - Durum: {status_icon}"
-                        room_list_widget.addItem(room_item)
-                except Exception as e:
-                    print(f"Durum güncellenirken hata oluştu: {e}")
-                    QtWidgets.QMessageBox.critical(self, "Hata", "Durum güncellenirken hata oluştu.")
-
-            room_list_widget.itemDoubleClicked.connect(update_status_on_click)
-
+            layout.addWidget(list_widget)
             room_list_window.setLayout(layout)
             room_list_window.exec_()
 
         except Exception as e:
-            print(f"Hata oluştu: {str(e)}")
-            QtWidgets.QMessageBox.critical(self, "Hata", f"Bir hata oluştu: {str(e)}")
-
+            print(f"Hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(self, "Hata", "Odalar listelenirken bir hata oluştu.")
         finally:
             if conn:
                 conn.close()
 
-    def list_room_status(self):
-        # Status listeleme mantığı aynı kalıyor
-        pass
+    def open_room_edit_window(self, item):
+        room_id = item.data(QtCore.Qt.UserRole)  # Oda numarasını alıyoruz
 
+        # Seçilen odanın bilgilerini almak için veritabanına sorgu
+        try:
+            conn = connect_to_db()
+            if not conn:
+                raise Exception("Veritabanı bağlantısı sağlanamadı.")
+
+            cursor = conn.cursor()
+            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Room WHERE Room_id = ?", (room_id,))
+            room = cursor.fetchone()
+
+            if not room:
+                QtWidgets.QMessageBox.warning(self, "Hata", "Oda bilgileri bulunamadı.")
+                return
+
+            room_number, room_type, price, available = room
+            available_status = "Boş" if available else "Dolu"
+
+            # Oda düzenleme penceresini aç
+            edit_window = QtWidgets.QDialog(self)
+            edit_window.setWindowTitle(f"Oda Düzenle - Oda No: {room_number}")
+            edit_window.setGeometry(700, 250, 400, 300)
+
+            layout = QtWidgets.QVBoxLayout()
+
+            # Oda bilgilerini düzenlemek için etiketler ve giriş kutuları
+            form_layout = QtWidgets.QFormLayout()
+            form_layout.setLabelAlignment(QtCore.Qt.AlignRight)
+            form_layout.setFormAlignment(QtCore.Qt.AlignCenter)
+
+            room_number_entry = QtWidgets.QLineEdit(str(room_number))
+            room_number_entry.setFixedSize(250, 30)
+            room_number_entry.setReadOnly(True)  # Oda numarasını değiştiremeyecek
+
+            room_type_entry = QtWidgets.QLineEdit(room_type)
+            room_type_entry.setFixedSize(250, 30)
+
+            price_entry = QtWidgets.QLineEdit(str(price))
+            price_entry.setFixedSize(250, 30)
+
+            status_combo = QtWidgets.QComboBox()
+            status_combo.addItems(["Boş", "Dolu"])
+            status_combo.setCurrentText(available_status)
+
+            # Formu ekle
+            form_layout.addRow("Oda Numarası:", room_number_entry)
+            form_layout.addRow("Oda Tipi:", room_type_entry)
+            form_layout.addRow("Fiyat:", price_entry)
+            form_layout.addRow("Durum:", status_combo)
+
+            layout.addLayout(form_layout)
+
+            # Güncelle butonu
+            update_button = QtWidgets.QPushButton("Güncelle")
+            update_button.clicked.connect(lambda: self.update_room(room_id, room_number_entry, room_type_entry, price_entry, status_combo, edit_window))
+            update_button.setFixedSize(150, 40)
+
+            layout.addWidget(update_button)
+
+            edit_window.setLayout(layout)
+            edit_window.exec_()
+
+        except Exception as e:
+            print(f"Bilgiler alınırken hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(self, "Hata", "Oda bilgileri alınırken bir hata oluştu.")
+        finally:
+            if conn:
+                conn.close()
+
+    def update_room(self, room_id, room_number_entry, room_type_entry, price_entry, status_combo, edit_window):
+        try:
+            conn = connect_to_db()
+            if not conn:
+                raise Exception("Veritabanı bağlantısı sağlanamadı.")
+
+            cursor = conn.cursor()
+
+            # Güncellenmiş oda bilgilerini al
+            room_type = room_type_entry.text()
+            price = float(price_entry.text())
+            available = 1 if status_combo.currentText() == "Boş" else 0
+
+            # Odayı güncelle
+            cursor.execute(""" 
+                UPDATE Room
+                SET Room_Type = ?, Price = ?, Available = ?
+                WHERE Room_id = ?
+            """, (room_type, price, available, room_id))
+
+            conn.commit()
+            QtWidgets.QMessageBox.information(edit_window, "Başarılı", "Oda başarıyla güncellendi.")
+            edit_window.accept()
+
+        except Exception as e:
+            print(f"Oda güncellenirken hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(edit_window, "Hata", "Oda güncellenirken hata oluştu.")
+        finally:
+            if conn:
+                conn.close()
 
 # Müşteri Yönetim Penceresi
 class CustomerWindow(QtWidgets.QWidget):
