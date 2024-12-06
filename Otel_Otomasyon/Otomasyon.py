@@ -371,9 +371,26 @@ class RoomWindow(QtWidgets.QWidget):
                 cursor = conn.cursor()
 
                 # Oda bilgileri alındı
-                room_number = int(self.room_number_entry.text())
-                room_type = self.room_type_entry.text()
-                price = float(self.price_entry.text())
+                room_number_text = self.room_number_entry.text().strip()
+                room_type = self.room_type_entry.text().strip()
+                price_text = self.price_entry.text().strip()
+
+                # Giriş doğrulama
+                if not room_number_text or not room_type or not price_text:
+                    QtWidgets.QMessageBox.warning(self, "Hata", "Tüm alanlar doldurulmalıdır.")
+                    return
+
+                try:
+                    room_number = int(room_number_text)
+                except ValueError:
+                    QtWidgets.QMessageBox.warning(self, "Hata", "Oda numarası geçerli bir sayı olmalıdır.")
+                    return
+
+                try:
+                    price = float(price_text)
+                except ValueError:
+                    QtWidgets.QMessageBox.warning(self, "Hata", "Fiyat geçerli bir sayı olmalıdır.")
+                    return
 
                 # Hotel_id manuel olarak belirlenir veya UI'den alınır
                 hotel_id = 1
@@ -481,7 +498,7 @@ class RoomWindow(QtWidgets.QWidget):
 
             room_number_entry = QtWidgets.QLineEdit(str(room_number))
             room_number_entry.setFixedSize(250, 30)
-            room_number_entry.setReadOnly(True)  # Oda numarasını değiştiremeyecek
+            room_number_entry.setReadOnly(True)
 
             room_type_entry = QtWidgets.QLineEdit(room_type)
             room_type_entry.setFixedSize(250, 30)
@@ -489,36 +506,34 @@ class RoomWindow(QtWidgets.QWidget):
             price_entry = QtWidgets.QLineEdit(str(price))
             price_entry.setFixedSize(250, 30)
 
-            status_combo = QtWidgets.QComboBox()
-            status_combo.addItems(["Boş", "Dolu"])
-            status_combo.setCurrentText(available_status)
+            available_combobox = QtWidgets.QComboBox()
+            available_combobox.addItem("Boş", 1)
+            available_combobox.addItem("Dolu", 0)
+            available_combobox.setCurrentIndex(0 if available == 1 else 1)
 
-            # Formu ekle
             form_layout.addRow("Oda Numarası:", room_number_entry)
             form_layout.addRow("Oda Tipi:", room_type_entry)
             form_layout.addRow("Fiyat:", price_entry)
-            form_layout.addRow("Durum:", status_combo)
+            form_layout.addRow("Durum:", available_combobox)
+
+            # Düzenleme butonu
+            save_button = QtWidgets.QPushButton("Kaydet")
+            save_button.clicked.connect(lambda: self.save_room_edit(room_id, room_type_entry.text(), price_entry.text(), available_combobox.currentData()))
 
             layout.addLayout(form_layout)
-
-            # Güncelle butonu
-            update_button = QtWidgets.QPushButton("Güncelle")
-            update_button.clicked.connect(lambda: self.update_room(room_id, room_number_entry, room_type_entry, price_entry, status_combo, edit_window))
-            update_button.setFixedSize(150, 40)
-
-            layout.addWidget(update_button)
+            layout.addWidget(save_button)
 
             edit_window.setLayout(layout)
             edit_window.exec_()
 
         except Exception as e:
-            print(f"Bilgiler alınırken hata oluştu: {e}")
-            QtWidgets.QMessageBox.critical(self, "Hata", "Oda bilgileri alınırken bir hata oluştu.")
+            print(f"Hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(self, "Hata", "Oda düzenleme penceresi açılamadı.")
         finally:
             if conn:
                 conn.close()
 
-    def update_room(self, room_id, room_number_entry, room_type_entry, price_entry, status_combo, edit_window):
+    def save_room_edit(self, room_id, room_type, price, available):
         try:
             conn = connect_to_db()
             if not conn:
@@ -526,25 +541,24 @@ class RoomWindow(QtWidgets.QWidget):
 
             cursor = conn.cursor()
 
-            # Güncellenmiş oda bilgilerini al
-            room_type = room_type_entry.text()
-            price = float(price_entry.text())
-            available = 1 if status_combo.currentText() == "Boş" else 0
+            try:
+                price = float(price)
+            except ValueError:
+                QtWidgets.QMessageBox.warning(self, "Hata", "Fiyat geçerli bir sayı olmalıdır.")
+                return
 
-            # Odayı güncelle
             cursor.execute(""" 
-                UPDATE Room
-                SET Room_Type = ?, Price = ?, Available = ?
+                UPDATE Room 
+                SET Room_Type = ?, Price = ?, Available = ? 
                 WHERE Room_id = ?
             """, (room_type, price, available, room_id))
 
             conn.commit()
-            QtWidgets.QMessageBox.information(edit_window, "Başarılı", "Oda başarıyla güncellendi.")
-            edit_window.accept()
+            QtWidgets.QMessageBox.information(self, "Başarılı", "Oda bilgileri başarıyla güncellendi.")
 
         except Exception as e:
-            print(f"Oda güncellenirken hata oluştu: {e}")
-            QtWidgets.QMessageBox.critical(edit_window, "Hata", "Oda güncellenirken hata oluştu.")
+            print(f"Hata oluştu: {e}")
+            QtWidgets.QMessageBox.critical(self, "Hata", "Oda düzenlenirken bir hata oluştu.")
         finally:
             if conn:
                 conn.close()
@@ -660,6 +674,7 @@ class CustomerWindow(QtWidgets.QWidget):
                         self.customer_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(data)))
             except Exception as e:
                 print(f"Müşteri listesi yüklenirken hata oluştu: {e}")
+                QtWidgets.QMessageBox.critical(self, "Hata", "Müşteri listesi yüklenirken hata oluştu.")
             finally:
                 conn.close()
 
@@ -695,6 +710,24 @@ class CustomerWindow(QtWidgets.QWidget):
         form_dialog.exec_()
 
     def save_customer(self, name, gender, age, phone, email, dialog, customer_id=None):
+        # Veri doğrulama
+        if not name or not age or not phone or not email:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Tüm alanlar doldurulmalıdır.")
+            return
+
+        if not age.isdigit() or int(age) <= 0:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Geçerli bir yaş girin.")
+            return
+
+        if not phone.isdigit() or len(phone) != 10:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Geçerli bir telefon numarası girin.")
+            return
+
+        if '@' not in email:
+            QtWidgets.QMessageBox.warning(self, "Uyarı", "Geçerli bir e-posta adresi girin.")
+            return
+
+        # Veritabanına kaydetme
         conn = connect_to_db()
         if conn:
             try:
@@ -719,6 +752,7 @@ class CustomerWindow(QtWidgets.QWidget):
         else:
             QtWidgets.QMessageBox.critical(self, "Hata", "Veritabanına bağlanırken bir hata oluştu.")
 
+# PyQt5 Uygulama Başlatıcı
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     splash = SplashScreen()
