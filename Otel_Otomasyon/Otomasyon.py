@@ -17,7 +17,7 @@ def add_admin(admin_name, username, password):
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO Admin (Admin_name, Username, Password) 
+                INSERT INTO Admins (Admin_Name, Username, Password) 
                 VALUES (?, ?, ?)
             """, (admin_name, username, password))
             conn.commit()
@@ -43,7 +43,9 @@ def validate_admin(username, password):
     if conn:
         try:
             cursor = conn.cursor()
-            cursor.execute("""SELECT * FROM Admin WHERE Username = ? AND Password = ?""", (username, password))
+            cursor.execute("""
+                SELECT * FROM Admins WHERE Username = ? AND Password = ?
+            """, (username, password))
             return cursor.fetchone() is not None
         except Exception as e:
             print(f"Giriş doğrulama sırasında hata oluştu: {e}")
@@ -248,21 +250,25 @@ class ReservationWindow(QtWidgets.QWidget):
         form_layout.setFormAlignment(QtCore.Qt.AlignCenter)  # Formu ortala
 
         # Giriş kutuları (Oda ID, Başlangıç ve Bitiş Tarihleri)
+        self.customer_id_entry = QtWidgets.QLineEdit()
         self.room_id_entry = QtWidgets.QLineEdit()
         self.start_date_entry = QtWidgets.QLineEdit()
         self.end_date_entry = QtWidgets.QLineEdit()
 
         # Giriş kutuları için stil
+        self.customer_id_entry.setFixedSize(250, 30)
         self.room_id_entry.setFixedSize(250, 30)
         self.start_date_entry.setFixedSize(250, 30)
         self.end_date_entry.setFixedSize(250, 30)
 
         # Placeholder text (soluk yazılar)
+        self.customer_id_entry.setPlaceholderText("Müşteri ID")
         self.room_id_entry.setPlaceholderText("Oda ID")
         self.start_date_entry.setPlaceholderText("Başlangıç Tarihi (YYYY-MM-DD)")
         self.end_date_entry.setPlaceholderText("Bitiş Tarihi (YYYY-MM-DD)")
 
         # Etiketler ve giriş kutularını form düzenine ekle
+        form_layout.addRow("Müşteri ID:", self.customer_id_entry)
         form_layout.addRow("Oda ID:", self.room_id_entry)
         form_layout.addRow("Başlangıç Tarihi:", self.start_date_entry)
         form_layout.addRow("Bitiş Tarihi:", self.end_date_entry)
@@ -282,14 +288,15 @@ class ReservationWindow(QtWidgets.QWidget):
         self.setLayout(layout)
 
     def save_reservation(self):
-        conn = connect_to_db()
+        conn = connect_to_db()  # Bağlantı fonksiyonunun doğru şekilde çalıştığından emin olun
         if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    """INSERT INTO Reservation (Room_Number, Start_Date, End_Date) 
+                    """INSERT INTO Reservations (Customer_id, Room_Number, Start_Date, End_Date) 
                     VALUES (?, ?, ?, ?)""",
-                    (self.room_id_entry.text(),
+                    (self.customer_id_entry.text(),
+                     self.room_id_entry.text(),
                      self.start_date_entry.text(),
                      self.end_date_entry.text()))
                 conn.commit()
@@ -393,17 +400,17 @@ class RoomWindow(QtWidgets.QWidget):
                     return
 
                 # Hotel_id manuel olarak belirlenir veya UI'den alınır
-                hotel_id = 1
+                hotel_id = 1  # Bu değeri UI'den veya başka bir kaynaktan alabilirsiniz
 
                 # Oda numarasının benzersiz olmasını sağla
-                cursor.execute("SELECT COUNT(*) FROM Room WHERE Room_id = ?", (room_number,))
+                cursor.execute("SELECT COUNT(*) FROM Rooms WHERE Room_id = ?", (room_number,))
                 if cursor.fetchone()[0] > 0:
                     QtWidgets.QMessageBox.warning(self, "Hata", "Bu oda numarası zaten var.")
                     return
 
                 # Odayı ekle
                 cursor.execute(""" 
-                    INSERT INTO Room (Room_id, Hotel_id, Room_Type, Price, Available)
+                    INSERT INTO Rooms (Room_id, Hotel_id, Room_Type, Price, Available)
                     VALUES (?, ?, ?, ?, ?)
                 """, (room_number, hotel_id, room_type, price, 1))
 
@@ -423,7 +430,7 @@ class RoomWindow(QtWidgets.QWidget):
                 raise Exception("Veritabanı bağlantısı sağlanamadı.")
 
             cursor = conn.cursor()
-            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Room")
+            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Rooms")
             rooms = cursor.fetchall()
 
             if not rooms:
@@ -474,7 +481,7 @@ class RoomWindow(QtWidgets.QWidget):
                 raise Exception("Veritabanı bağlantısı sağlanamadı.")
 
             cursor = conn.cursor()
-            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Room WHERE Room_id = ?", (room_id,))
+            cursor.execute("SELECT Room_id, Room_Type, Price, Available FROM Rooms WHERE Room_id = ?", (room_id,))
             room = cursor.fetchone()
 
             if not room:
@@ -548,7 +555,7 @@ class RoomWindow(QtWidgets.QWidget):
                 return
 
             cursor.execute(""" 
-                UPDATE Room 
+                UPDATE Rooms 
                 SET Room_Type = ?, Price = ?, Available = ? 
                 WHERE Room_id = ?
             """, (room_type, price, available, room_id))
@@ -645,7 +652,7 @@ class CustomerWindow(QtWidgets.QWidget):
                 if conn:
                     try:
                         cursor = conn.cursor()
-                        cursor.execute("DELETE FROM Customer WHERE Customer_id = ?", (customer_id,))
+                        cursor.execute("DELETE FROM Customers WHERE Customer_id = ?", (customer_id,))
                         conn.commit()
                         self.load_customers()  # Listeyi güncelle
                         QtWidgets.QMessageBox.information(self, "Başarılı", "Müşteri başarıyla silindi.")
@@ -663,7 +670,7 @@ class CustomerWindow(QtWidgets.QWidget):
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT Customer_id, Name, Gender, Age, Phone, Email FROM Customer")
+                cursor.execute("SELECT Customer_id, Name, Gender, Age, Phone, Email FROM Customers")
                 rows = cursor.fetchall()
 
                 self.customer_table.setRowCount(0)  # Eski veriyi temizle
@@ -733,11 +740,11 @@ class CustomerWindow(QtWidgets.QWidget):
             try:
                 cursor = conn.cursor()
                 if customer_id:
-                    cursor.execute("""UPDATE Customer SET Name = ?, Gender = ?, Age = ?, Phone = ?, Email = ? 
+                    cursor.execute("""UPDATE Customers SET Name = ?, Gender = ?, Age = ?, Phone = ?, Email = ? 
                                       WHERE Customer_id = ?""",
                                    (name, gender, age, phone, email, customer_id))
                 else:
-                    cursor.execute("""INSERT INTO Customer (Name, Gender, Age, Phone, Email) 
+                    cursor.execute("""INSERT INTO Customers (Name, Gender, Age, Phone, Email) 
                                       VALUES (?, ?, ?, ?, ?)""",
                                    (name, gender, age, phone, email))
                 conn.commit()
